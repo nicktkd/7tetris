@@ -59,6 +59,13 @@
     .overlay p{font-size:12px;line-height:1.5;color:#b4c3d6;margin:0 0 19px;}
     .start{border:0;border-radius:12px;background:var(--mint);color:#082b26;font-weight:900;font-size:14px;padding:13px 20px;min-width:155px;}
     .overlay .extra{margin-top:12px;color:#7188a5;font-size:10px;}
+    .discord-link{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;width:100%;margin-top:10px;padding:9px 10px;border:1px solid #7681ff;border-radius:11px;background:#5865f2;color:#fff;text-decoration:none;font-size:12px;font-weight:800;line-height:1.2;touch-action:manipulation;transition:background-color .15s ease;}
+    .discord-link:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+    .discord-link:active{background:#4654d4;}
+    .discord-link svg{width:20px;height:20px;flex:none;fill:currentColor;}
+    .discord-short{display:none;}
+    @media(max-width:375px){.discord-long{display:none}.discord-short{display:inline}.discord-link{font-size:12px;padding:6px 3px;white-space:nowrap}.discord-link svg{width:16px;height:16px}}
+    @media(max-height:570px){.overlay{padding:7px}.overlay-inner{max-height:100%;overflow-y:auto;scrollbar-width:none}.overlay .tag{font-size:8px;letter-spacing:.05em}.overlay h1{font-size:20px;margin:5px 0}.overlay p{font-size:10px;line-height:1.25;margin-bottom:9px}.start{font-size:11px;padding:9px 5px;min-width:0;width:100%}.discord-link{min-height:34px;margin-top:7px}.overlay .extra{margin-top:7px;font-size:9px}}
     @media(max-height:710px){
       :root{--cell:min(25px, calc((100dvh - 280px) / 20), calc((100vw - 143px) / 10));}
       .shell{gap:6px;padding-top:calc(env(safe-area-inset-top) + 5px);padding-bottom:calc(env(safe-area-inset-bottom) + 4px)}
@@ -90,6 +97,10 @@
             <h1 id="overlay-title">Готовий<br>зіграти?</h1>
             <p id="overlay-message">Сім фігур зі спресованої військової техніки. Збирай лінії та заряджай лазер!</p>
             <button class="start" id="overlay-action">Почати гру</button>
+            <a class="discord-link" href="https://discord.gg/ApG37jwAM" target="_blank" rel="noopener noreferrer" aria-label="Приєднатися до Discord-сервера, відкриється нова вкладка">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19.8 5.1a18 18 0 0 0-4.5-1.4l-.5 1a16 16 0 0 0-5.6 0l-.5-1A18 18 0 0 0 4.2 5.1C1.4 9.1.7 13 1.1 16.8a18 18 0 0 0 5.5 2.8l1.2-1.9-1.9-.9.4-.3c3.6 1.7 7.8 1.7 11.4 0l.4.3-1.9.9 1.2 1.9a18 18 0 0 0 5.5-2.8c.5-4.4-.8-8.3-3.1-11.7ZM8.7 14.5c-.9 0-1.5-.8-1.5-1.7s.6-1.7 1.5-1.7 1.5.8 1.5 1.7-.6 1.7-1.5 1.7Zm6.6 0c-.9 0-1.5-.8-1.5-1.7s.6-1.7 1.5-1.7 1.5.8 1.5 1.7-.6 1.7-1.5 1.7Z"/></svg>
+              <span class="discord-long">Приєднатись до Discord</span><span class="discord-short">Discord</span>
+            </a>
             <div class="extra" id="overlay-extra">Торкнись поля, щоб обернути фігуру</div>
           </div>
         </div>
