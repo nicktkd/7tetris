@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#0a101c">
+  <meta name="theme-color" content="#29292e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>STACK — CRUSHED TETROMINO</title>
   <style>
-    :root { color-scheme:dark; --bg:#0a101c; --panel:#131e30; --line:#26344c; --muted:#8fa1bb; --white:#eff5ff; --mint:#59e3b9; --cell: min(26px, calc((100dvh - 296px) / 20), calc((100vw - 143px) / 10)); }
+    :root { color-scheme:dark; --bg:#0a101c; --panel:#131e30; --line:#26344c; --muted:#8fa1bb; --white:#eff5ff; --mint:#59e3b9; --cell: min(26px, calc((100dvh - 346px) / 20), calc((100vw - 143px) / 10)); }
     * { box-sizing:border-box; }
     html,body{width:100%;height:100%;margin:0;overflow:hidden;}
     body{background:radial-gradient(ellipse at 50% -20%,#203451 0%,transparent 65%),var(--bg);color:var(--white);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;overscroll-behavior:none;touch-action:none;}
@@ -38,8 +38,10 @@
     .energy-fill{height:100%;background:linear-gradient(90deg,#41caa7,#a8ffce);width:100%;transition:width .18s ease;}
     .hint{color:#7287a2;text-align:center;font-size:10px;line-height:1.45;padding:5px 2px;}
     .best-value{text-align:center;font-weight:750;font-variant-numeric:tabular-nums;font-size:14px;margin-top:8px;color:#dfe8ff;}
-    .controls{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr;gap:8px;flex-shrink:0;}
-    .ctrl{min-height:55px;background:#1b2a40;border:1px solid #344961;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;font-size:25px;font-weight:800;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
+    .controls{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:10px;align-items:end;flex-shrink:0;}
+    .controls-left{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-self:end;}
+    .controls-right{display:grid;grid-template-rows:1fr 1fr;gap:8px;}
+    .ctrl{min-height:52px;background:#1b2a40;border:1px solid #344961;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;font-size:25px;font-weight:800;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
     .ctrl span{font-size:9px;letter-spacing:.03em;font-weight:650;color:#9eb1cb;}
     .ctrl:active,.ctrl.pressed{background:#2c4960;transform:translateY(1px);}
     .ctrl.drop{background:#174b51;border-color:#27776e;color:#a8ffe3;}
@@ -67,21 +69,111 @@
     @media(max-width:375px){.discord-long{display:none}.discord-short{display:inline}.discord-link{font-size:12px;padding:6px 3px;white-space:nowrap}.discord-link svg{width:16px;height:16px}}
     @media(max-height:570px){.overlay{padding:7px}.overlay-inner{max-height:100%;overflow-y:auto;scrollbar-width:none}.overlay .tag{font-size:8px;letter-spacing:.05em}.overlay h1{font-size:20px;margin:5px 0}.overlay p{font-size:10px;line-height:1.25;margin-bottom:9px}.start{font-size:11px;padding:9px 5px;min-width:0;width:100%}.discord-link{min-height:34px;margin-top:7px}.overlay .extra{margin-top:7px;font-size:9px}}
     @media(max-height:710px){
-      :root{--cell:min(25px, calc((100dvh - 280px) / 20), calc((100vw - 143px) / 10));}
+      :root{--cell:min(25px, calc((100dvh - 334px) / 20), calc((100vw - 143px) / 10));}
       .shell{gap:6px;padding-top:calc(env(safe-area-inset-top) + 5px);padding-bottom:calc(env(safe-area-inset-bottom) + 4px)}
       .header{min-height:31px}.brand{font-size:18px}.subbrand{font-size:8px;margin-top:2px}
       .stat{min-height:45px;padding:5px 8px}.stat strong{font-size:17px;margin-top:2px}
-      .ctrl{min-height:49px}.booster{min-height:54px;padding:6px 9px}.boost-icon{width:35px;height:35px}
+      .controls{grid-template-columns:minmax(0,1fr) 104px;gap:8px}.controls-left,.controls-right{gap:7px}.ctrl{min-height:46px}.booster{min-height:54px;padding:6px 9px}.boost-icon{width:35px;height:35px}
     }
-    @media(max-width:360px){.side{width:77px}.side-box{padding:7px 4px}#next{width:65px;height:65px}.game-row{gap:8px}.shell{padding-left:9px;padding-right:9px}}
+    @media(max-width:360px){.side{width:77px}.side-box{padding:7px 4px}#next{width:65px;height:65px}.game-row{gap:8px}.shell{padding-left:9px;padding-right:9px}.controls{grid-template-columns:minmax(0,1fr) 96px;gap:7px}.controls-left,.controls-right{gap:6px}.ctrl{font-size:22px}.ctrl span{font-size:8px}}
     @media (prefers-reduced-motion:reduce){*,*::after,*::before{transition:none!important;animation:none!important}}
+
+    /* FOUNDATION EDITION: neutral grey surfaces, official deep burgundy, red controls. */
+    :root{
+      --bg:#29292e; --panel:#36353a; --line:#5b464b; --muted:#c5b8ba;
+      --white:#f5f0f1; --mint:#c33140; --burgundy:#78121b; --red:#c33140;
+      --side-width:91px;
+      --cell:min(26px,calc((100dvh - 375px) / 20),calc((100vw - 143px) / 10));
+    }
+    body{
+      background:radial-gradient(ellipse at 50% -18%,#48454a 0%,transparent 63%),#29292e;
+      color:var(--white);
+    }
+    .brand i{color:#e34d5e}
+    .brand span{color:#b43c49!important}
+    .subbrand{color:#d1c1c4}
+    .header-right{gap:7px}
+    .mode{border-color:#83404b;background:rgba(120,18,27,.28);color:#f1c1c9}
+    .small-btn,.header-discord{
+      width:35px;height:35px;flex-shrink:0;border-radius:10px;
+      background:#51151e;border:1px solid #8b3441;color:#fff;
+      display:grid;place-items:center;text-decoration:none;
+    }
+    .header-discord:focus-visible,.discord-link:focus-visible,.ctrl:focus-visible,.small-btn:focus-visible,.start:focus-visible,#laser:focus-visible{outline:2px solid #f4b7c0;outline-offset:2px}
+    .stat{background:linear-gradient(120deg,rgba(120,18,27,.17),rgba(54,53,58,.95) 70%);border-color:#63454b;border-left:3px solid #94242f}
+    .stat span,.label{color:#d4bdc1}
+    .board-wrap{border-color:#8a3540;box-shadow:0 0 22px rgba(120,18,27,.16),inset 0 0 20px rgba(0,0,0,.26);background:#18191d}
+    .side-box{background:rgba(54,53,58,.95);border-color:#65474d}
+    .energy-bar{background:#55444a}
+    .energy-fill{background:linear-gradient(90deg,#78121b,#d94250)}
+    .hint{color:#b7a9af}
+    .best-value{color:#f6edef}
+    /* The controls follow the physical handheld Tetris: movement under the board,
+       rotation and drop stacked in the right-hand column. */
+    .controls{
+      display:grid;
+      grid-template-columns:calc(var(--cell)*10 + 4px) var(--side-width);
+      gap:10px;width:max-content;max-width:100%;margin:0 auto;
+      align-items:end;justify-content:center;
+    }
+    .controls-left{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;align-self:end}
+    .controls-right{display:grid;grid-template-columns:1fr;grid-template-rows:auto auto;gap:9px}
+    .ctrl{
+      min-height:64px;border-radius:16px;
+      border:1px solid #ad4550;
+      background:linear-gradient(160deg,#8d202b,#62141e);
+      color:#fff;font-size:29px;font-weight:900;line-height:1;
+      box-shadow:inset 0 -5px 0 rgba(29,0,5,.24),0 4px 9px rgba(0,0,0,.14);
+      gap:5px;touch-action:none;
+    }
+    .ctrl span{color:#f1d4da;font-size:9px;letter-spacing:.045em}
+    .controls-right .ctrl{min-height:55px;font-size:27px}
+    .ctrl.drop{background:linear-gradient(155deg,#d63a49,#95202b);color:#fff;border-color:#e25964}
+    .ctrl:active,.ctrl.pressed{background:#b42c3a;transform:translateY(2px);box-shadow:inset 0 -2px 0 rgba(0,0,0,.28)}
+    .ctrl.drop:active,.ctrl.drop.pressed{background:#e04755}
+    .booster{background:#373339;border-color:#74434d}
+    .boost-icon{background:#691a25;color:#ffd9dd}
+    #laser{background:#bd2b3a;border-color:#e25b67;color:#fff}
+    #laser:disabled{background:#575052;color:#c6babb;border-color:#69595e}
+    .foot{color:#b0a5a9}
+    .overlay{background:rgba(31,30,34,.93);backdrop-filter:blur(3px)}
+    .overlay .tag{color:#ef8491}
+    .overlay p{color:#d6c8cb}
+    .overlay .extra{color:#b2a4a8}
+    .start{background:linear-gradient(160deg,#cf3443,#951e2b);color:#fff;box-shadow:inset 0 -3px 0 rgba(0,0,0,.16)}
+    .discord-link{background:#6e1c28;border-color:#af4653;color:#fff}
+    .discord-link:active{background:#942735}
+    @media(max-height:710px){
+      :root{--cell:min(25px,calc((100dvh - 306px) / 20),calc((100vw - 143px) / 10))}
+      .ctrl{min-height:58px}
+      .controls-right .ctrl{min-height:48px}
+      .controls,.controls-left,.controls-right{gap:7px}
+    }
+    @media(max-width:360px){
+      :root{--side-width:77px}
+      .controls{gap:8px}
+      .controls-left,.controls-right{gap:6px}
+      .ctrl{min-height:55px;font-size:26px;border-radius:13px}
+      .controls-right .ctrl{min-height:48px;font-size:25px}
+      .ctrl span{font-size:8px}
+      .header-right{gap:5px}
+      .small-btn,.header-discord{width:32px;height:32px}
+      .mode{padding:4px 6px;font-size:9px}
+    }
+    @media(max-height:620px){.hint{display:none}}
+    @media(max-height:570px){
+      :root{--cell:min(25px,calc((100dvh - 285px) / 20),calc((100vw - 143px) / 10))}
+      .controls-right .ctrl{min-height:44px}
+      .ctrl{min-height:48px}
+      .controls-left,.controls-right{gap:5px}
+    }
   </style>
 </head>
 <body>
   <main class="shell">
     <header class="header">
       <div><div class="brand">ST<i>A</i>CK<span style="color:#53738c">.</span></div><div class="subbrand">CRUSHED TETROMINO · 7 ФІГУР</div></div>
-      <div class="header-right"><span class="mode">1 БУСТЕР</span><button id="pause" class="small-btn" aria-label="Пауза">Ⅱ</button></div>
+      <div class="header-right"><span class="mode">1 БУСТЕР</span><a class="header-discord" href="https://discord.gg/ApG37jwAM" target="_blank" rel="noopener noreferrer" aria-label="Discord фонду, відкрити в новій вкладці" title="Discord"><svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19.8 5.1a18 18 0 0 0-4.5-1.4l-.5 1a16 16 0 0 0-5.6 0l-.5-1A18 18 0 0 0 4.2 5.1C1.4 9.1.7 13 1.1 16.8a18 18 0 0 0 5.5 2.8l1.2-1.9-1.9-.9.4-.3c3.6 1.7 7.8 1.7 11.4 0l.4.3-1.9.9 1.2 1.9a18 18 0 0 0 5.5-2.8c.5-4.4-.8-8.3-3.1-11.7ZM8.7 14.5c-.9 0-1.5-.8-1.5-1.7s.6-1.7 1.5-1.7 1.5.8 1.5 1.7-.6 1.7-1.5 1.7Zm6.6 0c-.9 0-1.5-.8-1.5-1.7s.6-1.7 1.5-1.7 1.5.8 1.5 1.7-.6 1.7-1.5 1.7Z"/></svg></a><button id="pause" class="small-btn" aria-label="Пауза">Ⅱ</button></div>
     </header>
     <section class="stats" aria-label="Поточний рахунок">
       <div class="stat"><span>Очки</span><strong id="score">0</strong></div>
@@ -113,10 +205,14 @@
       </aside>
     </section>
     <nav class="controls" aria-label="Керування грою">
-      <button class="ctrl" id="left" aria-label="Рух ліворуч">←<span>ЛІВОРУЧ</span></button>
-      <button class="ctrl" id="rotate" aria-label="Обернути фігуру">↻<span>ОБЕРНУТИ</span></button>
-      <button class="ctrl" id="right" aria-label="Рух праворуч">→<span>ПРАВОРУЧ</span></button>
-      <button class="ctrl drop" id="drop" aria-label="Скинути фігуру">↓<span>СКИНУТИ</span></button>
+      <div class="controls-left">
+        <button class="ctrl" id="left" aria-label="Рух ліворуч">←<span>ЛІВОРУЧ</span></button>
+        <button class="ctrl" id="right" aria-label="Рух праворуч">→<span>ПРАВОРУЧ</span></button>
+      </div>
+      <div class="controls-right">
+        <button class="ctrl" id="rotate" aria-label="Обернути фігуру">↻<span>ОБЕРНУТИ</span></button>
+        <button class="ctrl drop" id="drop" aria-label="Скинути фігуру вниз">↓<span>СКИНУТИ</span></button>
+      </div>
     </nav>
     <section class="booster" aria-label="Бустер лазер">
       <div class="booster-copy"><div class="boost-icon">ϟ</div><div><strong>Лазер</strong><small>Прибирає найнижчий ряд блоків</small></div></div>
@@ -306,13 +402,13 @@
         c.drawImage(spriteAtlas,source[0],source[1],ART_CELL_SIZE,ART_CELL_SIZE,-size/2,-size/2,size,size);
         c.restore();
       }else{
-        square(c,x,y,size,COLORS[type]||'#89a2ba');
+        square(c,x,y,size,COLORS[type]||'#b83b47');
       }
     }
     function draw(){
       if(!ctx||!grid||!unit)return;
-      ctx.clearRect(0,0,cw,ch);ctx.fillStyle='#0d1828';ctx.fillRect(0,0,cw,ch);
-      ctx.strokeStyle='rgba(117,151,182,.1)';ctx.lineWidth=.7;ctx.beginPath();
+      ctx.clearRect(0,0,cw,ch);ctx.fillStyle='#18191d';ctx.fillRect(0,0,cw,ch);
+      ctx.strokeStyle='rgba(196,163,168,.11)';ctx.lineWidth=.7;ctx.beginPath();
       for(let x=1;x<COLS;x++){ctx.moveTo(x*unit,0);ctx.lineTo(x*unit,ch);}
       for(let y=1;y<ROWS;y++){ctx.moveTo(0,y*unit);ctx.lineTo(cw,y*unit);}ctx.stroke();
       for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
