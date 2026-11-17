@@ -77,6 +77,8 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
 .overlay p{font-size:clamp(12px,3.4vw,15px);color:#d7ccce;line-height:1.45;margin:0 0 14px;max-width:34ch}
 .start{background:#b92b3a;border:1px solid #e45e6d;border-radius:14px;color:#fff;font-weight:850;font-size:15px;min-height:46px;padding:10px 16px;max-width:100%}
 .overlay .extra{font-size:11px;color:#a99b9d;margin-top:4px;line-height:1.35;max-width:32ch}
+.overlay-version{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 10px);left:0;right:0;text-align:center;font-size:11px;letter-spacing:.07em;font-weight:550;color:#a99b9d;pointer-events:none}
+.overlay-inner{max-height:calc(100% - 28px)}
 .overlay-socials[hidden]{display:none!important}
 .overlay-socials{width:100%;display:flex;flex-direction:column;gap:14px;margin:16px 0 0}
 .overlay-social-block{width:100%;padding:12px 12px 14px;border-radius:14px;background:rgba(29,28,32,.62);border:1px solid #59474b;display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -128,6 +130,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
               </section>
             </div>
           </div>
+          <div class="overlay-version" aria-label="Версія гри">version 0.13</div>
         </div>
       </div>
     </div>
@@ -158,7 +161,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
           <button type="button" class="ctrl left" id="left" aria-label="Ліворуч" title="Ліворуч"><svg viewBox="0 0 36 36" width="32" height="32" fill="currentColor" aria-hidden="true"><path d="M7 5L29 18 7 31Z"/></svg></button>
           <button type="button" class="ctrl right" id="right" aria-label="Праворуч" title="Праворуч"><svg viewBox="0 0 36 36" width="32" height="32" fill="currentColor" aria-hidden="true"><path d="M7 5L29 18 7 31Z"/></svg></button>
         </div>
-        <button type="button" class="ctrl down" id="drop" aria-label="Скинути вниз" title="Скинути вниз"><svg viewBox="0 0 36 36" width="32" height="32" fill="currentColor" aria-hidden="true"><path d="M7 5L29 18 7 31Z"/></svg></button>
+        <button type="button" class="ctrl down" id="drop" aria-label="Коротко: прискорити вниз; утримувати: миттєво скинути" title="Натисни: опустити на клітинку; утримуй: скинути"><svg viewBox="0 0 36 36" width="32" height="32" fill="currentColor" aria-hidden="true"><path d="M7 5L29 18 7 31Z"/></svg></button>
       </div>
     </div>
     <div class="controls-right"><button type="button" class="ctrl rotate" id="rotate" aria-label="Обернути фігуру" title="Обернути фігуру"><svg viewBox="0 0 48 48" width="42" height="42" fill="none" aria-hidden="true"><path d="M37 21A14 14 0 1 0 38 28" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M37 9V22H24" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
@@ -240,6 +243,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     const nextCanvas=$('next'),nctx=nextCanvas.getContext('2d');
     let grid,active,bag=[],preview,score=0,lines=0,level=1,energy=100,best=0;
     let state='intro',lastTime=0,fallAccumulator=0,frameId=0;
+    let cancelDropPress=()=>{};
     let touchStart=null;
     try{best=Number(localStorage.getItem('stack_best_v1'))||0;}catch(e){}
     renderLCD('best',best);
@@ -488,6 +492,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
       else if(playCue)sound('spawn');
     }
     function start(){
+      cancelDropPress();
       unlockAudio();effects=[];grid=emptyGrid();bag=[];preview=nextType();score=0;lines=0;level=1;energy=100;fallAccumulator=0;recordAnnounced=false;
       state='playing';$('overlay').classList.add('hidden');
       sound('start');spawn(false);updateHud();draw();
@@ -568,6 +573,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
       updateHud();draw();
     }
     function finish(){
+      cancelDropPress();
       state='over';sound('over');
       if(score>best){best=score;try{localStorage.setItem('stack_best_v1',String(best));}catch(e){}}
       renderLCD('best',best);
@@ -583,6 +589,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
       $('overlay').classList.remove('hidden');
     }
     function pause(){
+      cancelDropPress();
       if(state==='playing'){
         if(!document.hidden)sound('pause');
         state='paused';showOverlay('ПАУЗА','Перерва','Фігура зачекає. Продовжимо, коли будеш готовий.','Продовжити','Пауза не впливає на рахунок',false);
@@ -685,7 +692,51 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     $('overlay-action').addEventListener('click',()=>{if(state==='paused')pause();else start();});
     $('pause').addEventListener('click',()=>{if(state==='playing'||state==='paused')pause();});
     $('rotate').addEventListener('click',rotate);
-    $('drop').addEventListener('click',hardDrop);
+    // Two-stage DOWN button:
+    //  - quick press: soft drop (+1 point per cell), repeated rapidly while held;
+    //  - hold for 650 ms: hard drop the SAME active piece.
+    // Do not allow an expired hold to drop a newly spawned piece.
+    const dropButton=$('drop');
+    const DROP_LONG_MS=650, DROP_REPEAT_DELAY_MS=195, DROP_REPEAT_MS=90;
+    let dropPointer=null,dropPiece=null,dropRepeatDelay=null,dropRepeatTimer=null,dropLongTimer=null;
+    function stopDropGesture(){
+      clearTimeout(dropRepeatDelay);clearInterval(dropRepeatTimer);clearTimeout(dropLongTimer);
+      dropRepeatDelay=dropRepeatTimer=dropLongTimer=null;
+      dropPointer=null;dropPiece=null;
+      dropButton.classList.remove('pressed');
+    }
+    // Assign cancellation so game reset, pause, and game over clear pending timers.
+    cancelDropPress=stopDropGesture;
+    dropButton.addEventListener('pointerdown',ev=>{
+      if(state!=='playing'||dropPointer!==null)return;
+      if(ev.pointerType==='mouse'&&ev.button!==0)return;
+      ev.preventDefault();
+      dropPointer=ev.pointerId;
+      dropPiece=active;
+      dropButton.classList.add('pressed');
+      try{dropButton.setPointerCapture(ev.pointerId);}catch(e){}
+      softDrop(); // even a very short tap produces one step down
+      if(state!=='playing'||active!==dropPiece){stopDropGesture();return;}
+      dropRepeatDelay=setTimeout(()=>{
+        dropRepeatTimer=setInterval(()=>{
+          if(state!=='playing'||active!==dropPiece){stopDropGesture();return;}
+          softDrop();
+          if(state!=='playing'||active!==dropPiece)stopDropGesture();
+        },DROP_REPEAT_MS);
+      },DROP_REPEAT_DELAY_MS);
+      dropLongTimer=setTimeout(()=>{
+        if(state==='playing'&&active===dropPiece)hardDrop();
+        stopDropGesture();
+      },DROP_LONG_MS);
+    });
+    function endDropPointer(ev){if(ev.pointerId===dropPointer)stopDropGesture();}
+    dropButton.addEventListener('pointerup',endDropPointer);
+    dropButton.addEventListener('pointercancel',endDropPointer);
+    dropButton.addEventListener('lostpointercapture',endDropPointer);
+    dropButton.addEventListener('contextmenu',ev=>ev.preventDefault());
+    // Keyboard activation of the focused button (Enter/Space) is a short tap.
+    // Pointer-generated clicks must not trigger a second movement or hard drop.
+    dropButton.addEventListener('click',ev=>{if(ev.detail===0)softDrop();});
     $('laser').addEventListener('click',laser);
     function repeatControl(id,action){
       const el=$(id);let timer=null,delay=null;
