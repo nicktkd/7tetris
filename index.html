@@ -245,12 +245,13 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     renderLCD('best',best);
     $('overlay-socials').hidden=false;
 
-    // Original sound effects are synthesized in Web Audio, so no additional audio files are required.
-    let audioContext=null,masterGain=null,noiseBuffer=null;
+    // All sound effects are synthesized locally. No MP3, fonts, or extra network assets.
+    let audioContext=null,masterGain=null,compressor=null,noiseBuffer=null;
     let soundEnabled=true;
     try{soundEnabled=localStorage.getItem('crushed_sound_enabled')!=='0';}catch(e){}
     const fxReducedMotion=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let effects=[];
+    let recordAnnounced=false;
     function updateSoundButton(){
       const el=$('sound');
       el.innerHTML=soundEnabled
@@ -269,60 +270,128 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
         if(!Context)return null;
         if(!audioContext){
           audioContext=new Context();
-          masterGain=audioContext.createGain();masterGain.gain.value=.23;
-          masterGain.connect(audioContext.destination);
+          compressor=audioContext.createDynamicsCompressor();
+          compressor.threshold.value=-16;compressor.knee.value=12;
+          compressor.ratio.value=5;compressor.attack.value=.004;
+          compressor.release.value=.12;
+          masterGain=audioContext.createGain();
+          masterGain.gain.value=.29;
+          compressor.connect(masterGain);masterGain.connect(audioContext.destination);
         }
-        if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+        if(audioContext.state==='suspended'){
+          const resumed=audioContext.resume();
+          if(resumed&&resumed.catch)resumed.catch(()=>{});
+        }
         return audioContext;
       }catch(e){return null;}
     }
+    // On iOS/Safari the AudioContext needs a user gesture to unlock; handle
+    // touch/pointer and keyboard input, even after tab suspension/resumption.
+    document.addEventListener('pointerdown',unlockAudio,{capture:true,passive:true});
+    document.addEventListener('touchstart',unlockAudio,{capture:true,passive:true});
+    document.addEventListener('keydown',unlockAudio,{capture:true});
     function tone(freq,delay,duration,shape='triangle',gain=.08,fallTo=null){
-      const ac=unlockAudio(); if(!ac||ac.state==='closed')return;
-      const at=ac.currentTime+delay;
+      const ac=unlockAudio();if(!ac||ac.state==='closed')return;
+      const at=ac.currentTime+Math.max(0,delay);
       const osc=ac.createOscillator(),g=ac.createGain();
       osc.type=shape;
       osc.frequency.setValueAtTime(freq,at);
       if(fallTo!=null)osc.frequency.exponentialRampToValueAtTime(Math.max(30,fallTo),at+duration);
       g.gain.setValueAtTime(.0001,at);
-      g.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),at+.008);
+      g.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),at+Math.min(.006,duration*.23));
       g.gain.exponentialRampToValueAtTime(.0001,at+duration);
-      osc.connect(g);g.connect(masterGain);osc.start(at);osc.stop(at+duration+.01);
+      osc.connect(g);g.connect(compressor);osc.start(at);osc.stop(at+duration+.01);
     }
-    function crackle(delay=.0,duration=.32,gain=.12){
+    // Reuse a short random-noise texture, filtered differently for metal, fire,
+    // button taps and explosions. Keep the buffer looping for longer effects.
+    function noiseBurst(delay=.0,duration=.15,gain=.08,freq=1250,filterType='bandpass',q=.8){
       const ac=unlockAudio();if(!ac||ac.state==='closed')return;
       if(!noiseBuffer){
         noiseBuffer=ac.createBuffer(1,Math.ceil(ac.sampleRate*.5),ac.sampleRate);
         const data=noiseBuffer.getChannelData(0);
-        for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1);
+        for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
       }
-      const at=ac.currentTime+delay;
+      const at=ac.currentTime+Math.max(0,delay);
       const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),g=ac.createGain();
-      src.buffer=noiseBuffer;filter.type='bandpass';filter.frequency.value=1150;filter.Q.value=.8;
+      src.buffer=noiseBuffer;src.loop=true;
+      filter.type=filterType;filter.frequency.value=freq;filter.Q.value=q;
       g.gain.setValueAtTime(.0001,at);
-      g.gain.exponentialRampToValueAtTime(gain,at+.017);
+      g.gain.exponentialRampToValueAtTime(Math.max(.0002,gain),at+Math.min(.012,duration*.25));
       g.gain.exponentialRampToValueAtTime(.0001,at+duration);
-      src.connect(filter);filter.connect(g);g.connect(masterGain);
-      src.start(at);src.stop(at+duration+.01);
+      src.connect(filter);filter.connect(g);g.connect(compressor);
+      src.start(at);src.stop(at+duration+.008);
     }
     function sound(kind,count=1){
       if(!soundEnabled)return;
-      if(kind==='rotate'){tone(420,0,.075,'square',.035,310);}
-      else if(kind==='move'){tone(170,0,.038,'triangle',.016,135);}
-      else if(kind==='drop'){tone(170,0,.14,'triangle',.11,75);tone(65,.025,.11,'sine',.11,42);}
+      if(kind==='move'){
+        // Distinct audible 650–800 Hz mechanical click; previous 170 Hz / 38 ms
+        // was almost inaudible through tiny mobile speakers.
+        tone(780,0,.060,'square',.085,570);
+        noiseBurst(0,.024,.035,1800,'highpass');
+      }
+      else if(kind==='rotate'){
+        tone(520,0,.085,'square',.065,360);
+        tone(850,.035,.070,'triangle',.05,700);
+      }
+      else if(kind==='drop'){
+        tone(170,0,.16,'triangle',.13,62);
+        tone(75,.014,.16,'sine',.15,40);
+        noiseBurst(0,.065,.075,650,'lowpass');
+      }
       else if(kind==='clear'){
-        crackle(0,.27+.045*count,.13);
-        tone(290,0,.31,'sawtooth',.07,120);
-        tone(480,.1,.28,'triangle',.07,220);
-        if(count>=3)tone(610,.17,.34,'sine',.08,830);
+        // Ignition -> twisting/cracking metal -> short explosion -> dying embers.
+        const strength=Math.min(1.3,1+(count-1)*.09);
+        noiseBurst(0,.17,.08*strength,1150,'bandpass'); // ignition hiss
+        tone(260,0,.18,'sawtooth',.068,140);
+        noiseBurst(.11,.10,.11*strength,2000,'bandpass',1.2); // metal shear
+        tone(1020,.12,.12,'square',.035,490);
+        noiseBurst(.22,.24,.17*strength,440,'lowpass'); // explosive thump
+        tone(155,.21,.27,'sawtooth',.14*strength,55);
+        tone(92,.25,.26,'sine',.13,45);
+        noiseBurst(.40,.29,.055,1250,'bandpass'); // crackle fade
+        if(count>=3)tone(640,.30,.31,'triangle',.045,920);
       }
       else if(kind==='laser'){
-        tone(1050,0,.29,'sawtooth',.075,135);
-        crackle(.05,.32,.13);
-        tone(170,.22,.19,'triangle',.10,58);
+        tone(1100,0,.30,'sawtooth',.08,120);
+        noiseBurst(.04,.31,.15,1900,'bandpass');
+        tone(165,.22,.22,'triangle',.13,54);
+      }
+      else if(kind==='start'){
+        tone(330,0,.11,'triangle',.08,380);
+        tone(440,.10,.12,'triangle',.09,500);
+        tone(660,.21,.19,'triangle',.10,710);
+      }
+      else if(kind==='spawn'){
+        tone(740,0,.052,'triangle',.032,600);
+      }
+      else if(kind==='pause'){
+        tone(390,0,.09,'triangle',.055,280);
+        tone(280,.09,.13,'triangle',.055,170);
+      }
+      else if(kind==='resume'){
+        tone(280,0,.085,'triangle',.06,380);
+        tone(420,.09,.13,'triangle',.07,550);
+      }
+      else if(kind==='levelup'){
+        tone(390,.36,.13,'triangle',.075,440);
+        tone(540,.49,.13,'triangle',.075,600);
+        tone(780,.62,.24,'triangle',.09,880);
+      }
+      else if(kind==='record'){
+        tone(520,.17,.12,'triangle',.06,580);
+        tone(690,.31,.12,'triangle',.06,750);
+        tone(880,.45,.20,'triangle',.085,960);
       }
       else if(kind==='over'){
-        tone(380,0,.21,'triangle',.07,260);
-        tone(240,.19,.35,'triangle',.08,90);
+        tone(380,0,.21,'triangle',.09,260);
+        tone(240,.19,.35,'triangle',.09,90);
+      }
+    }
+    function maybeRecord(){
+      // A single achievement cue per run; do not chirp on the first tiny drop
+      // when the old record is zero. The saved record remains game-over only.
+      if(!recordAnnounced&&score>=100&&score>best){
+        recordAnnounced=true;sound('record');
       }
     }
     function burnRows(rows,kind='clear'){
@@ -413,14 +482,15 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
         return x<0||x>=COLS||y>=ROWS||(y>=0&&grid[y][x]);
       });
     }
-    function spawn(){
+    function spawn(playCue=true){
       active=piece(preview);preview=nextType();drawNext();
       if(collide(active)){finish();}
+      else if(playCue)sound('spawn');
     }
     function start(){
-      unlockAudio();effects=[];grid=emptyGrid();bag=[];preview=nextType();score=0;lines=0;level=1;energy=100;fallAccumulator=0;
+      unlockAudio();effects=[];grid=emptyGrid();bag=[];preview=nextType();score=0;lines=0;level=1;energy=100;fallAccumulator=0;recordAnnounced=false;
       state='playing';$('overlay').classList.add('hidden');
-      spawn();updateHud();draw();
+      sound('start');spawn(false);updateHud();draw();
       lastTime=performance.now();
       cancelAnimationFrame(frameId);frameId=requestAnimationFrame(tick);
     }
@@ -467,8 +537,11 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
         burnRows(burned,'clear');sound('clear',cleared);
         score+=[0,100,300,500,800][cleared]*level;
         lines+=cleared;energy=Math.min(100,energy+cleared*25);
+        const oldLevel=level;
         level=1+Math.floor(lines/10);
+        if(level>oldLevel)sound('levelup');
       }
+      maybeRecord();
       fallAccumulator=0;spawn();updateHud();draw();
     }
     function softDrop(){if(state!=='playing')return; if(!move(0,1))lock();else{score+=1;updateHud();}}
@@ -511,9 +584,11 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     }
     function pause(){
       if(state==='playing'){
+        if(!document.hidden)sound('pause');
         state='paused';showOverlay('ПАУЗА','Перерва','Фігура зачекає. Продовжимо, коли будеш готовий.','Продовжити','Пауза не впливає на рахунок',false);
       }else if(state==='paused'){
         state='playing';$('overlay').classList.add('hidden');lastTime=performance.now();
+        sound('resume');
         cancelAnimationFrame(frameId);frameId=requestAnimationFrame(tick);
       }
       updateHud();
@@ -601,6 +676,9 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     $('sound').addEventListener('click',()=>{
       soundEnabled=!soundEnabled;
       try{localStorage.setItem('crushed_sound_enabled',soundEnabled?'1':'0');}catch(e){}
+      if(masterGain&&audioContext){
+        masterGain.gain.setTargetAtTime(soundEnabled?.29:0,audioContext.currentTime,.012);
+      }
       if(soundEnabled){unlockAudio();sound('rotate');}
       updateSoundButton();
     });
