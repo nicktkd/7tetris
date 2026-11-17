@@ -333,6 +333,12 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
         tone(780,0,.060,'square',.085,570);
         noiseBurst(0,.024,.035,1800,'highpass');
       }
+      else if(kind==='step'){
+        // A short mechanical click for EVERY successful one-cell downward step.
+        // Gravity and accelerated descent automatically change the click tempo.
+        tone(650,0,.035,'square',.055,480);
+        noiseBurst(0,.017,.022,1650,'highpass');
+      }
       else if(kind==='rotate'){
         tone(520,0,.085,'square',.065,360);
         tone(850,.035,.070,'triangle',.05,700);
@@ -508,7 +514,7 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     }
     function move(dx,dy){
       if(state!=='playing')return false;
-      if(!collide(active,dx,dy)){active.x+=dx;active.y+=dy;if(dx!==0)sound('move');draw();return true;}
+      if(!collide(active,dx,dy)){active.x+=dx;active.y+=dy;if(dx!==0)sound('move');else if(dy>0)sound('step');draw();return true;}
       return false;
     }
     function rotate(){
