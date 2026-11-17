@@ -141,10 +141,10 @@ a:focus-visible,button:focus-visible{outline:2px solid #ffde9c;outline-offset:3p
     'use strict';
     const COLS=10, ROWS=20, POWER_COST=100;
     const COLORS={I:'#52d8e6',O:'#f4cc63',T:'#ae84f1',S:'#64d69b',Z:'#ef7183',J:'#6c9dea',L:'#efaa62'};
-    // Packed sprite atlas: 28 tiles of 256×256 arranged in 4 columns × 7 rows.
+    // Optimized sprite atlas: 28 tiles of 128×128 arranged in 4 columns × 7 rows. Original: atlas_master.png (not loaded by game).
     // Tile index follows each piece's SHAPES point order and survives row removal.
-    const TILE_ATLAS={"S":[[0,768],[256,768],[512,768],[768,768]],"Z":[[0,1024],[256,1024],[512,1024],[768,1024]],"J":[[0,1280],[256,1280],[512,1280],[768,1280]],"L":[[0,1536],[256,1536],[512,1536],[768,1536]],"T":[[0,512],[256,512],[512,512],[768,512]],"I":[[0,0],[256,0],[512,0],[768,0]],"O":[[0,256],[256,256],[512,256],[768,256]]};
-    const ART_CELL_SIZE=256;
+    const TILE_ATLAS={"S":[[0,384],[128,384],[256,384],[384,384]],"Z":[[0,512],[128,512],[256,512],[384,512]],"J":[[0,640],[128,640],[256,640],[384,640]],"L":[[0,768],[128,768],[256,768],[384,768]],"T":[[0,256],[128,256],[256,256],[384,256]],"I":[[0,0],[128,0],[256,0],[384,0]],"O":[[0,128],[128,128],[256,128],[384,128]]};
+    const ART_CELL_SIZE=128;
     const spriteAtlas=new Image();
     let spriteAtlasReady=false;
     spriteAtlas.onload=()=>{spriteAtlasReady=true;drawNext();draw();};
